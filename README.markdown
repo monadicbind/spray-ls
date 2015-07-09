@@ -1,4 +1,4 @@
-## _spray_ Template Project
+## Spray Rest Services for CQRS
 
 
 Follow these steps to get started:
