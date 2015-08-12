@@ -1,23 +1,16 @@
 package com.example
 
-import java.util.Date
-
 import akka.actor.Actor
 import akka.event.slf4j.SLF4JLogging
 import com.example.dao.MasterLMSDAO
-import spray.http.parser.HttpParser
-import spray.routing._
-import spray.http._
-import MediaTypes._
-import spray.httpx.Json4sSupport
-import org.json4s.Formats
-import org.json4s.DefaultFormats
 import com.example.model._
-import spray.httpx.SprayJsonSupport._
-import spray.util._
-import spray.json._ 
+import com.typesafe.scalalogging.LazyLogging
+import org.json4s.DefaultFormats
+import spray.http.MediaTypes._
+import spray.http.{StatusCodes, StatusCode}
+import spray.httpx.Json4sSupport
 import spray.httpx.unmarshalling._
-import spray.httpx.marshalling._
+import spray.routing._
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -46,18 +39,13 @@ class ProbeQueryServiceActor extends Actor with ProbeQueryService with ProbeComm
 
 
 // this trait defines our service behavior independently from the service actor
-trait ProbeQueryService extends HttpService with Json4sSupport with SLF4JLogging{
-  //import ProbeLSProtocol._
+trait ProbeQueryService extends HttpService with Json4sSupport with SLF4JLogging {
 
   val json4sFormats = DefaultFormats
 
-  val lmsService = new MasterLMSDAO
+  val lmsService = MasterLMSDAO
 
   implicit def executionContext = actorRefFactory.dispatcher
-
-  /*def inpToOp(futInp : Future[+T]):T = futInp onComplete{
-    case Success(opVal) => opVal
-  }*/
 
   val myRoute =
     path("getAllProbes") {
@@ -80,16 +68,61 @@ trait ProbeQueryService extends HttpService with Json4sSupport with SLF4JLogging
         }
       }
     } ~
+    path("lms"){
+      put{
+        respondWithMediaType(`application/json`){
+          entity(as[MasterLMS]){ masterLMS =>
+            complete {
+              log.info("New LMS Request")
+              val insLMSwithId = lmsService.insert(masterLMS).mapTo[com.example.dao.MasterLMSDAO.MasterLMS]
+              insLMSwithId onComplete {
+                case Success(opVal) => {
+                  log.info("Inserted new Master LMS record: %s".format(opVal.id))
+                }
+                case Failure(ex) => {
+                  log.info("Exception thrown : %s".format(ex.getLocalizedMessage))
+                }
+
+              }
+              insLMSwithId
+            }
+
+          }
+
+        }
+      } ~
+      post{
+        respondWithMediaType(`application/json`){
+          entity(as[MasterLMS]) { updatedLMS => {
+            log.info("Updating LMS with ID : %d".format(updatedLMS.id))
+            val opVal = lmsService.update(updatedLMS.id,updatedLMS)
+            onComplete(opVal) {
+              case Success(respInt) => {
+                log.info("Response to the Update : %s".format(respInt.toString))
+                complete(opVal)
+              }
+              case Failure(ex) => {
+                log.info("Failed"+ex.getLocalizedMessage)
+                complete(StatusCodes.InternalServerError)
+              }
+
+            }
+
+          }
+          }
+        }
+      }
+
+    } ~
     path("lms" / LongNumber) { lmsId =>
       get {
         respondWithMediaType(`application/json`){
           complete {
             log.info("Requesting LMS with ID : %d".format(lmsId))
-            val test:Future[com.example.entity.MasterLMS] = lmsService.findById(lmsId).mapTo[com.example.entity.MasterLMS]
+            val test:Future[com.example.dao.MasterLMSDAO.MasterLMS] = lmsService.findById(lmsId).mapTo[com.example.dao.MasterLMSDAO.MasterLMS]
             test onComplete {
               case Success(opVal) => {
                 log.info("LTI ID is : %s".format(opVal.ltiId))
-                log.info("Name is : %s".format(opVal.name))
               }
               case Failure(ex) => {
                 log.info("Failed due to the following exception: TEST")
@@ -99,12 +132,29 @@ trait ProbeQueryService extends HttpService with Json4sSupport with SLF4JLogging
             test
           }
         }
+      } ~
+      delete{
+        respondWithMediaType(`application/json`) {
+          log.info("Delete Master LMS Record with id : %s".format(lmsId.toString))
+          val deleteLms = lmsService.delete(lmsId)
+          onComplete(deleteLms) {
+            case Success(opVal) => {
+              log.info("Response from db delete is : %s".format(opVal.toString))
+              log.info("Successfully deleted LMS Record with id : %s".format(lmsId.toString))
+              complete(StatusCodes.OK)
+            }
+            case Failure(ex) => {
+              log.info("Failed to delete the lms record")
+              log.info("Exception Message : %s".format(ex.getLocalizedMessage))
+              complete(StatusCodes.InternalServerError,s"Exception Message: ${ex.getLocalizedMessage}")
+            }
+          }
+        }
       }
     }
 }
 
 trait ProbeCommandService extends HttpService with Json4sSupport {
-  //import ProbeLSProtocol._
 
   val json4sFormats = DefaultFormats
 

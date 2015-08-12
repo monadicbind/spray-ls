@@ -5,16 +5,13 @@ import spray.testkit.Specs2RouteTest
 import spray.http._
 import StatusCodes._
 import com.example.model.Probe
-import spray.json._ 
-import spray.httpx.unmarshalling._
-import spray.httpx.marshalling._
+import spray.json._
 
 object ProbeLSProtocol extends DefaultJsonProtocol {
   implicit val probeFormat = jsonFormat3(Probe)
 }
 
 class ProbeQueryServiceSpec extends Specification with Specs2RouteTest with ProbeQueryService {
-  import ProbeLSProtocol._
   def actorRefFactory = system
   
   "ProbeQueryService" should {

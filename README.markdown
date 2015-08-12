@@ -21,13 +21,13 @@ Follow these steps to get started:
 
 5. Start the application:
 
-        > re-start
+        > reStart
 
 6. Browse to [http://localhost:8080](http://localhost:8080/)
 
 7. Stop the application:
 
-        > re-stop
+        > reStop
 
 8. Learn more at http://www.spray.io/
 

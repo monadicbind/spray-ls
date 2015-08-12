@@ -7,7 +7,7 @@
         </encoder>
     </appender>
     <logger name="akka" level="INFO"/>
-    <logger name="slick" level="SQL"/>
+    <logger name="scala.slick" level="SQL"/>
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>
